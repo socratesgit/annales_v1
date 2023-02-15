@@ -4,8 +4,7 @@ from pathlib import Path
 
 import sys
 
-PNG_FILE = Path.cwd() / "images" / "256x256-2023-02-12T18:02:02.758145" / "256x256-2023-02-12T18:02:02.758145-0.png"
-CROP_DIR = Path.cwd() / "cropped"
+CROP_DIR = Path.cwd() / 'data' / 'cropped'
 
 CROP_DIR.mkdir(exist_ok=True)
 
@@ -35,7 +34,7 @@ def calculate_x_y_w_h(width : float, height : float, option : str) -> Tuple[floa
     
     return x, y, w, h
 
-def crop_image(image : Image, option : str) -> Image:
+def crop_image(image : Image.Image, option : str) -> Image.Image:
     """
     Crop the image. Option can be top_half, bottom_half, left_half, right_half.
     """

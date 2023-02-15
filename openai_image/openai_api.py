@@ -1,6 +1,7 @@
 import io
 from base64 import b64decode
 from datetime import datetime
+from typing import List
 from PIL import Image
 import json
 import os
@@ -10,10 +11,10 @@ import openai
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-IMAGE_DIR = Path.cwd() / "images"
+IMAGE_DIR = Path.cwd() / 'data' / 'images'
 IMAGE_DIR.mkdir(exist_ok=True)
 
-EDIT_DIR = Path.cwd() / "edits"
+EDIT_DIR = Path.cwd() / 'data' / 'edits'
 EDIT_DIR.mkdir(exist_ok=True)
 
 SIZES = {
@@ -22,7 +23,7 @@ SIZES = {
     "large" : '1024x1024',
 }
 
-def generate_images(prompt : str, size : str = 'small', n : int = 1) -> dict:
+def generate_images(prompt : str, size : str = 'small', n : int = 1, save : bool = False) -> List[Image.Image]:
     """
     Generate images from a prompt
     """
@@ -30,7 +31,7 @@ def generate_images(prompt : str, size : str = 'small', n : int = 1) -> dict:
         image_resp = openai.Image.create(
             prompt=prompt, 
             n=n, 
-            size=size,
+            size=SIZES[size],
             response_format="b64_json",
         )
     except openai.error.OpenAIError as e:
@@ -39,18 +40,23 @@ def generate_images(prompt : str, size : str = 'small', n : int = 1) -> dict:
 
     finally:
 
-        prompt_dir = IMAGE_DIR / prompt[:10]
-        prompt_dir.mkdir(exist_ok=True)
+        if save:
 
-        for index, image_dict in enumerate(image_resp["data"]):
-            image_data = b64decode(image_dict["b64_json"])
-            image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
-            with open(image_file, mode="wb") as png:
-                png.write(image_data)
+            prompt_dir = IMAGE_DIR / prompt[:10]
+            prompt_dir.mkdir(exist_ok=True)
 
-        return image_resp
+            list_images = []
 
-def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1, size : str = 'small') -> dict:
+            for index, image_dict in enumerate(image_resp["data"]):
+                image_data = b64decode(image_dict["b64_json"])
+                list_images.append(Image.open(io.BytesIO(image_data)))
+                image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
+                with open(image_file, mode="wb") as png:
+                    png.write(image_data)
+
+        return list_images
+
+def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1, size : str = 'small', save : bool = False) -> List[Image.Image]:
     """
     Edit an image with a mask
     """
@@ -70,13 +76,21 @@ def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1,
 
     finally:
 
-        for index, image_dict in enumerate(image_resp["data"]):
-                image_data = b64decode(image_dict["b64_json"])
-                image_file = IMAGE_DIR / f"{prompt[:10]}-{index}.png"
-                with open(image_file, mode="wb") as png:
-                    png.write(image_data)
+        if save:
 
-        return image_resp
+            prompt_dir = EDIT_DIR / prompt[:10]
+            prompt_dir.mkdir(exist_ok=True)
+
+            list_images = []
+
+            for index, image_dict in enumerate(image_resp["data"]):
+                    image_data = b64decode(image_dict["b64_json"])
+                    list_images.append(Image.open(io.BytesIO(image_data)))
+                    image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
+                    with open(image_file, mode="wb") as png:
+                        png.write(image_data)
+
+        return list_images
 
 def generate_text(prompt : str, n : int = 1) -> dict:
     """
@@ -86,16 +100,9 @@ def generate_text(prompt : str, n : int = 1) -> dict:
         text_resp = openai.Completion.create(
             model="davinci",
             prompt=prompt,
-            max_tokens=100,
-            temperature=0.9,
-            top_p=1,
+            max_tokens=1000,
             n=n,
-            stream=False,
-            stop=["\n", "###", "##", "#"],
-            presence_penalty=0.6,
-            frequency_penalty=0.5,
-            best_of=1,
-            logprobs=10,
+            temperature=0.7,
         )
 
     except openai.error.OpenAIError as e:
@@ -103,6 +110,7 @@ def generate_text(prompt : str, n : int = 1) -> dict:
         print(e.error)
 
     finally:
+
         return text_resp
 
 def edit_text(input : str, instruction : str) -> dict:
@@ -121,6 +129,7 @@ def edit_text(input : str, instruction : str) -> dict:
         print(e.error)
 
     finally:
+
         return text_resp
     
 

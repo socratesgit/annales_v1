@@ -30,4 +30,3 @@ def upload_photo(path, caption):
                 location=location, 
                 usertags=usertags
         )
-

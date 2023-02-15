@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw
 from pathlib import Path
 import sys
 
-MASK_DIR = Path.cwd() / "masks"
+MASK_DIR = Path.cwd() / 'data' / 'masked'
 MASK_DIR.mkdir(exist_ok=True)
 
 def calculate_x_y_width_height(width : float, height : float, option : str) -> Tuple[float, float, float, float]:
@@ -32,7 +32,7 @@ def calculate_x_y_width_height(width : float, height : float, option : str) -> T
     
     return x, y, width, height
 
-def mask_image(image : Image, option : str) -> Image:
+def mask_image(image : Image.Image, option : str) -> Image.Image:
     """
     Mask the image. Option can be top_half, bottom_half, left_half, right_half.
     """

@@ -3,10 +3,7 @@ from base64 import b64decode
 import time
 from typing import List
 from PIL import Image
-from openai_api import edit_image
-from crop import crop_image
-from mask import mask_image
-from merge import merge_right, merge_bottom
+from . import openai_api, crop, mask, merge
 
 MAP_DIRECTION = {
     "right" : "right_half",
@@ -15,7 +12,7 @@ MAP_DIRECTION = {
     "bottom" : "bottom_half",
 }
 
-def image_to_bytes(image : Image) -> io.BytesIO:
+def image_to_bytes(image : Image.Image) -> io.BytesIO:
     """
     Convert an image to bytes
     """
@@ -25,38 +22,31 @@ def image_to_bytes(image : Image) -> io.BytesIO:
 
     return image_bytes
 
-def make_tile(image : Image, prompt : str, direction : str) -> Image:
+def make_tile(image : Image.Image, prompt : str, direction : str) -> Image.Image:
     """
     Make a tile to the right of the image
     """ 
     direction = MAP_DIRECTION[direction]
 
-    first_crop = crop_image(image, direction)
+    first_crop = crop.crop_image(image, direction)
     first_crop_bytes = image_to_bytes(first_crop)
 
-    first_mask = mask_image(first_crop, direction)
+    first_mask = mask.mask_image(first_crop, direction)
     first_mask_bytes = image_to_bytes(first_mask)
 
-    first_edit = edit_image(first_crop_bytes, first_mask_bytes, prompt)
-
-    image_dict = first_edit["data"][0]
-    image_data = b64decode(image_dict["b64_json"])
-    image_data = Image.open(io.BytesIO(image_data))
+    first_edit = openai_api.edit_image(first_crop_bytes, first_mask_bytes, prompt).pop()
 
 
-    second_crop = crop_image(image_data, direction)
+    second_crop = crop.crop_image(first_edit, direction)
     second_crop_bytes = image_to_bytes(second_crop)
-    second_mask = mask_image(second_crop, direction)
+    second_mask = mask.mask_image(second_crop, direction)
     second_mask_bytes = image_to_bytes(second_mask)
 
-    second_edit = edit_image(second_crop_bytes, second_mask_bytes, prompt)
-
-    image_data = b64decode(second_edit["data"][0]["b64_json"])
-    second_edit = Image.open(io.BytesIO(image_data))
+    second_edit = openai_api.edit_image(second_crop_bytes, second_mask_bytes, prompt).pop()
 
     return second_edit
 
-def expand(image : Image, prompt : str, step : int = 1, direction : str = 'left') -> List[Image.Image]:
+def expand(image : Image.Image, prompt : str, step : int = 1, direction : str = 'left') -> List[Image.Image]:
     """
     Expand one side of the image by a given number of tiles
     """
