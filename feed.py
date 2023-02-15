@@ -1,12 +1,20 @@
 from base64 import b64decode
 from PIL import Image
-from openai_image import openai_api, outpaint
+from openai_image import openai_api, outpaint, merge
 from news import news
 from pathlib import Path
 
-RIGHT_DIR = Path.cwd() / 'right'
-CENTER_DIR = Path.cwd() / 'center'
-LEFT_DIR = Path.cwd() / 'left'
+FEED_DIR = Path.cwd() / 'feed'
+
+FEED_DIR.mkdir(exist_ok=True)
+
+RIGHT_DIR = Path.cwd() / 'feed' / 'right'
+CENTER_DIR = Path.cwd() / 'feed' / 'center'
+LEFT_DIR = Path.cwd() / 'feed' / 'left'
+
+RIGHT_DIR.mkdir(exist_ok=True)
+CENTER_DIR.mkdir(exist_ok=True)
+LEFT_DIR.mkdir(exist_ok=True)
 
 PROMPT_DECORATOR = "Comment on the following piece of news as if you were a Roman pagan historian of the imperial era:\n"
 
@@ -23,7 +31,7 @@ def create_feed():
     for index,article in enumerate(articles):
         if index > 4:
             break
-        prompt = article['description']
+        prompt = create_caption(article)
         if not first_image_created: 
             print(f"Making tile for {article['description']}")
             try:
@@ -32,30 +40,42 @@ def create_feed():
                                                     size='small',
                                                     n=1
                                                     ).pop()
-            except Exception as e:
-                continue
-            finally:
                 list_images.append(image)
                 first_image_created = True
+            except Exception as e:
+                continue
+                
         else:
             print(f"Making tile for {article['description']}")
             try:
                 prompt = article["title"]
                 image = outpaint.make_tile(image, prompt, "left")
-                image.save(f"outpaint-{index}.png")
+                list_images.append(image)
             except Exception as e:
                 continue
+        
+        image.save(f"outpaint-{index}.png")
+    
     
 def create_caption(article):
     header = f"{article['title']} - {article['source']['name']}\n"
     body = f"{article['description']}"
-    #return header + body
-    decorated_prompt = decorate_prompt(header + body)
-    text = openai_api.generate_text(decorated_prompt, 1)
-    return text['choices'][0]['text']
+    return header + body
+    #decorated_prompt = decorate_prompt(header + body)
+    #text = openai_api.generate_text(decorated_prompt, 1)
+    #return text['choices'][0]['text']
 
 def generate_feed():
-    return None
+    articles = news.get_top_headlines(3)
+    for article in articles:
+        image = openai_api.generate_images(
+                                            prompt=article["title"],
+                                            size='small',
+                                            n=1
+                                            ).pop()
+        image.save(f"feed/{article['title']}.png")
+    
+
 
 if __name__ == "__main__":
-    print(create_caption(news.get_top_headlines(1).pop()))
+    generate_feed()

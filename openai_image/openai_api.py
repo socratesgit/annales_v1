@@ -40,19 +40,22 @@ def generate_images(prompt : str, size : str = 'small', n : int = 1, save : bool
 
     finally:
 
+        list_images = []
+
+        for index, image_dict in enumerate(image_resp["data"]):
+                image_data = b64decode(image_dict["b64_json"])
+                list_images.append(Image.open(io.BytesIO(image_data)))
+
         if save:
 
             prompt_dir = IMAGE_DIR / prompt[:10]
             prompt_dir.mkdir(exist_ok=True)
 
-            list_images = []
-
             for index, image_dict in enumerate(image_resp["data"]):
-                image_data = b64decode(image_dict["b64_json"])
-                list_images.append(Image.open(io.BytesIO(image_data)))
-                image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
-                with open(image_file, mode="wb") as png:
-                    png.write(image_data)
+                    image_data = b64decode(image_dict["b64_json"])
+                    image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
+                    with open(image_file, mode="wb") as png:
+                        png.write(image_data)
 
         return list_images
 
@@ -76,19 +79,23 @@ def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1,
 
     finally:
 
+        list_images = []
+
+        for index, image_dict in enumerate(image_resp["data"]):
+            image_data = b64decode(image_dict["b64_json"])
+            list_images.append(Image.open(io.BytesIO(image_data)))
+
         if save:
 
             prompt_dir = EDIT_DIR / prompt[:10]
             prompt_dir.mkdir(exist_ok=True)
 
-            list_images = []
+            
 
             for index, image_dict in enumerate(image_resp["data"]):
-                    image_data = b64decode(image_dict["b64_json"])
-                    list_images.append(Image.open(io.BytesIO(image_data)))
-                    image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
-                    with open(image_file, mode="wb") as png:
-                        png.write(image_data)
+                image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
+                with open(image_file, mode="wb") as png:
+                    png.write(image_data)
 
         return list_images
 

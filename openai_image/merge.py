@@ -1,3 +1,4 @@
+from typing import List
 from PIL import Image
 from pathlib import Path
 import sys
@@ -33,7 +34,7 @@ def merge_bottom(image1 : Image.Image, image2 : Image.Image) -> Image.Image:
 
     return new_image
 
-def merge_left_list(image_list : list) -> Image.Image:
+def merge_left_list(image_list : List[Image.Image]) -> Image.Image:
     """
     Merge a list of images together. The first image is on the left, the second image is on the right.
     """
@@ -46,7 +47,7 @@ def merge_left_list(image_list : list) -> Image.Image:
 
     return new_image
 
-def merge_top_list(image_list : list) -> Image.Image:
+def merge_top_list(image_list : List[Image.Image]) -> Image.Image:
     """
     Merge a list of images together. The first image is on the top, the second image is on the bottom.
     """
