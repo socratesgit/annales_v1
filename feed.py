@@ -16,6 +16,8 @@ RIGHT_DIR.mkdir(exist_ok=True)
 CENTER_DIR.mkdir(exist_ok=True)
 LEFT_DIR.mkdir(exist_ok=True)
 
+DIR_LIST = [RIGHT_DIR, CENTER_DIR, LEFT_DIR]
+
 PROMPT_DECORATOR = "Comment on the following piece of news as if you were a Roman pagan historian of the imperial era:\n"
 
 def decorate_prompt(prompt):
@@ -65,17 +67,34 @@ def create_caption(article):
     #text = openai_api.generate_text(decorated_prompt, 1)
     #return text['choices'][0]['text']
 
-def generate_feed():
-    articles = news.get_top_headlines(3)
-    for article in articles:
-        image = openai_api.generate_images(
-                                            prompt=article["title"],
-                                            size='small',
-                                            n=1
-                                            ).pop()
-        image.save(f"feed/{article['title']}.png")
+def feed_seed():
+
+    articles = news.get_top_headlines(10)
+    first_image_created = False
+    
+    for index,article in enumerate(articles):
+        print(f"Making tile for {article['description']}")
+        if not first_image_created:
+            print(f"Making tile for {article['description']}")
+            try:
+                image = openai_api.generate_images(
+                                                    prompt=article["title"],
+                                                    size='small',
+                                                    n=1
+                                                    ).pop()
+                image.save(f"{index}_{article['title']}.png")
+                first_image_created = True
+                continue
+            except Exception as e:
+                continue
+        
+        try:
+            image = outpaint.make_tile(image, article["title"], "left")
+            image.save(f"{index}_{article['title']}.png")
+        except Exception as e:
+            continue
     
 
 
 if __name__ == "__main__":
-    generate_feed()
+    feed_seed()

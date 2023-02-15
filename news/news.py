@@ -28,7 +28,8 @@ def get_articles(num_articles : int, save : bool = False) -> List[dict]:
     Get n articles from the newsapi
     '''
     articles = newsapi.get_everything(
-        sources=get_source_random(),
+        #sources=get_source_random(),
+        sources='the-whashington-post',
         sort_by='popularity',
         page_size=num_articles,
         )
@@ -51,7 +52,8 @@ def get_top_headlines(num_headlines : int, save : bool = False) -> List[dict]:
     Get n top headlines from the newsapi
     '''
     top_headlines = newsapi.get_top_headlines(
-        sources=get_source_random(),
+        #sources=get_source_random(),
+        sources='the-whashington-post',
         language='en',
         page_size=num_headlines,
         )
