@@ -24,7 +24,7 @@ LEFT_DIR.mkdir(exist_ok=True)
 
 DIR_LIST = [RIGHT_DIR, CENTER_DIR, LEFT_DIR]
 
-PROMPT = [
+PROMPTS = [
     "Tesla might have revealed the Cybertruck frame in a new video about the automaker’s robots.\n more…\nThe post Did Tesla leak the Cybertruck frame with this robot? appeared first on Electrek.",
     "As AI hype hits a fever pitch, CNBC's Brandon Gomez and Fahiemah Al-Ali kick off a conversation around the widespread interest in the technology with Paper c...",
     "Doge, Floki and SHIB are up, while BONK is flat after Musk declares his dog Floki is an amazing CEO of Twitter and “better than that other guy.”",
@@ -33,7 +33,10 @@ PROMPT = [
     "The U.S. economy is expected to grow at a 4.5% annual rate in the fourth quarter, according to the Atlanta Fed's GDPNow forecast released on Wednesday.",
 ]
 
-PROMPT_DECORATOR = "in the style of a comic book:"
+AESTHETICS = open("aesthetics.txt", "r").read().splitlines()
+ART_MOVEMENTS = open("art_movements.txt", "r").read().splitlines()
+
+PROMPT_DECORATOR = "in the style of "
 
 
 
@@ -41,7 +44,7 @@ def decorate_prompt(prompt : str) -> str:
     '''
     Decorate the prompt with the prompt decorator.
     '''
-    return PROMPT_DECORATOR + "\"" + prompt + "\"" + "\n"
+    return PROMPT_DECORATOR + random.choice(AESTHETICS) + ": \n\"" + prompt + "\"" + "\n"
 
 def create_caption(article : dict) -> str:
     '''
@@ -60,9 +63,10 @@ def generator_next_compliant_headline():
     '''
     top_headlines = news.get_top_headlines(20)
     for headline in top_headlines:
-        is_compliant = openai_api.is_compliant(create_caption(headline))
-        if is_compliant:
-            yield headline
+        yield headline['title']
+        #is_compliant = openai_api.is_compliant(headline['title'])
+        #if is_compliant:
+        #    yield headline
 
 def current_index_and_image(dir : Path):
     '''
@@ -81,10 +85,18 @@ def current_index_and_image(dir : Path):
     return current_index, current_image_path
 
 def generate_next_feed_line():
-    prompt = decorate_prompt(random.choice(PROMPT))
-    #prompt = generator_next_compliant_headline()
+    #prompt = decorate_prompt(random.choice(PROMPTS))
+    prompts = news.get_top_headlines(20)
     current_index, _ = current_index_and_image(CENTER_DIR)
     try:
+
+        prompt = create_caption(prompts.pop())
+        while not openai_api.is_compliant(prompt):
+            if prompts:
+                prompt = create_caption(prompts.pop())
+            else:
+                prompts = news.get_top_headlines(20)
+
         print(f"Generating center image for {prompt}")
         center_image = openai_api.generate_images(
                                                 prompt=prompt,
@@ -102,10 +114,11 @@ def generate_next_feed_line():
             print("Generating left and right images")
             left_image = outpaint.make_tile(center_image, 
                                                 prompt=prompt, 
-                                                direction="right"
-                                            )
+                                                direction="right")
             left_image.save(LEFT_DIR / f"{current_index + 1}_{prompt}.png")
-            right_image = outpaint.make_tile(center_image, "A line of people waiting to get into a store", "left")
+            right_image = outpaint.make_tile(center_image, 
+                                             prompt=prompt, 
+                                             direction="left")
             right_image.save(RIGHT_DIR / f"{current_index + 1}_{prompt}.png")
             print("Generated left and right images")
         except Exception as e:
@@ -122,7 +135,7 @@ def generate_next_feed_top():
         if current_image_path:
             print(f"Making tile for {current_image_path.name}")
             try:
-                prompt = random.choice(PROMPT)
+                prompt = random.choice(PROMPTS)
                 current_image = Image.open(current_image_path)
                 next_image = outpaint.make_tile(current_image, prompt, "top")
                 next_image.save(dir / f"{current_index + 1}_{prompt}.png")
