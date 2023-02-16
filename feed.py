@@ -1,11 +1,14 @@
-from base64 import b64decode
 import random
 import time
 from PIL import Image
-from openai_image import openai_api, outpaint, merge
+from openai_image import openai_api, outpaint
 from news import news
 from instagram_bot import bot
 from pathlib import Path
+
+DATA_DIR = Path.cwd() / 'data'
+
+DATA_DIR.mkdir(exist_ok=True)
 
 FEED_DIR = Path.cwd() / 'feed'
 
@@ -30,48 +33,20 @@ PROMPT = [
     "The U.S. economy is expected to grow at a 4.5% annual rate in the fourth quarter, according to the Atlanta Fed's GDPNow forecast released on Wednesday.",
 ]
 
-PROMPT_DECORATOR = "Comment on the following piece of news as if you were a Roman pagan historian of the imperial era:\n"
+PROMPT_DECORATOR = "in the style of a comic book:"
 
-def decorate_prompt(prompt):
+
+
+def decorate_prompt(prompt : str) -> str:
+    '''
+    Decorate the prompt with the prompt decorator.
+    '''
     return PROMPT_DECORATOR + "\"" + prompt + "\"" + "\n"
 
-def create_feed():
-    articles = news.get_top_headlines(10)
-
-    first_image_created = False
-
-    list_images = []
-
-    for index,article in enumerate(articles):
-        if index > 4:
-            break
-        prompt = create_caption(article)
-        if not first_image_created: 
-            print(f"Making tile for {article['description']}")
-            try:
-                image = openai_api.generate_images(
-                                                    prompt=prompt,
-                                                    size='small',
-                                                    n=1
-                                                    ).pop()
-                list_images.append(image)
-                first_image_created = True
-            except Exception as e:
-                continue
-                
-        else:
-            print(f"Making tile for {article['description']}")
-            try:
-                prompt = article["title"]
-                image = outpaint.make_tile(image, prompt, "left")
-                list_images.append(image)
-            except Exception as e:
-                continue
-        
-        image.save(f"outpaint-{index}.png")
-    
-    
-def create_caption(article):
+def create_caption(article : dict) -> str:
+    '''
+    Create a caption for an article.
+    '''
     header = f"{article['title']} - {article['source']['name']}\n"
     body = f"{article['description']}"
     return header + body
@@ -79,75 +54,106 @@ def create_caption(article):
     #text = openai_api.generate_text(decorated_prompt, 1)
     #return text['choices'][0]['text']
 
-def feed_seed():
+def generator_next_compliant_headline():
+    '''
+    Generator that yields the next headline that is compliant with OpenAI's policies.
+    '''
+    top_headlines = news.get_top_headlines(20)
+    for headline in top_headlines:
+        is_compliant = openai_api.is_compliant(create_caption(headline))
+        if is_compliant:
+            yield headline
 
-    articles = news.get_top_headlines(10)
-    first_image_created = False
-    
-    for index,article in enumerate(articles):
-        print(f"Making tile for {article['description']}")
-        if not first_image_created:
-            print(f"Making tile for {article['description']}")
-            try:
-                image = openai_api.generate_images(
-                                                    prompt=article["title"],
-                                                    size='small',
-                                                    n=1
-                                                    ).pop()
-                image.save(f"{index}_{article['title']}.png")
-                first_image_created = True
-                continue
-            except Exception as e:
-                continue
-        
-        try:
-            image = outpaint.make_tile(image, article["title"], "left")
-            image.save(f"{index}_{article['title']}.png")
-        except Exception as e:
-            continue
-
-def generate_next_feed():
+def current_index_and_image(dir : Path):
+    '''
+    Get the current index and image path for a given directory.
+    '''
     current_index = 0
-    current_image = None
-    for dir in DIR_LIST:
-        for file in dir.iterdir():
-            #if file is png 
-            if file.suffix == ".png":
-                #split file name on _ and get first element
-                index = int(file.name.split("_")[0])
-                if index > current_index:
-                    current_index = index
-                    current_image = file
-    if current_image:
-        print(f"Making tile for {current_image.name}")
+    current_image_path = None
+    for file in dir.iterdir():
+        #if file is png 
+        if file.suffix == ".png":
+            #split file name on _ and get first element
+            index = int(file.name.split("_")[0])
+            if index > current_index or current_index == 0:
+                current_index = index
+                current_image_path = file
+    return current_index, current_image_path
+
+def generate_next_feed_line():
+    prompt = decorate_prompt(random.choice(PROMPT))
+    #prompt = generator_next_compliant_headline()
+    current_index, _ = current_index_and_image(CENTER_DIR)
+    try:
+        print(f"Generating center image for {prompt}")
+        center_image = openai_api.generate_images(
+                                                prompt=prompt,
+                                                #prompt=next(prompt),
+                                                size='small',
+                                                n=1
+                                                ).pop()
+        center_image.save(CENTER_DIR / f"{current_index + 1}_{prompt}.png")
+        print("Generated center image")
+    except Exception as e:
+        print(e)
+        return
+    else:
         try:
-            prompt = random.choice(PROMPT)
-            image = outpaint.make_tile(image, prompt, "top")
-            image.save(f"{index}_{prompt}.png")
+            print("Generating left and right images")
+            left_image = outpaint.make_tile(center_image, 
+                                                prompt=prompt, 
+                                                direction="right"
+                                            )
+            left_image.save(LEFT_DIR / f"{current_index + 1}_{prompt}.png")
+            right_image = outpaint.make_tile(center_image, "A line of people waiting to get into a store", "left")
+            right_image.save(RIGHT_DIR / f"{current_index + 1}_{prompt}.png")
+            print("Generated left and right images")
         except Exception as e:
-            pass
+            print(e)
+            return
+
+def generate_next_feed_top():
+
+    dir_list_reverse = DIR_LIST[::-1]
+    for dir in dir_list_reverse:
+        
+        current_index, current_image_path = current_index_and_image(dir)
+
+        if current_image_path:
+            print(f"Making tile for {current_image_path.name}")
+            try:
+                prompt = random.choice(PROMPT)
+                current_image = Image.open(current_image_path)
+                next_image = outpaint.make_tile(current_image, prompt, "top")
+                next_image.save(dir / f"{current_index + 1}_{prompt}.png")
+            except Exception as e:
+                print(e)
+        else:
+            print("No current feed image found")
         
             
 def upload_feed():
+
+    insta_bot = bot.InstaBot()
     dir_list_reverse = DIR_LIST[::-1]
     for dir in dir_list_reverse:
-        for file in dir.iterdir():
-            #if file is png 
-            if file.suffix == ".png":
-                #split file name on _ and get first element
-                index = int(file.name.split("_")[0])
-                if index > current_index:
-                    current_index = index
-                    current_image = file
-    if current_image:
-        print("uploading feed")
-        try:
-            bot.upload_photo(path=current_image, caption=current_image.name.split("_")[1])
-            print("uploaded feed")
-            time.sleep(60)
-        except Exception as e:
-            pass
+
+        _, current_image = current_index_and_image(dir)
+            
+        if current_image:
+
+            print("uploading " + dir.name + " - " + current_image.name)
+            try:
+                insta_bot.upload_photo(path=current_image, 
+                                        caption=current_image.name.split("_")[1]
+                                        )
+                print("uploaded  " + dir.name + " - " + current_image.name)
+                time.sleep((random.random() + 1) * 10)
+            except Exception as e:
+                print(e)
+                pass
 
 
 if __name__ == "__main__":
-    upload_feed()
+    generate_next_feed_line()
+    #upload_feed()

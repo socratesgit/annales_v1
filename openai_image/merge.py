@@ -5,6 +5,8 @@ import sys
 
 MERGE_DIR = Path.cwd() / 'data' / 'marged'
 
+MERGE_DIR.mkdir(exist_ok=True)
+
 def merge_right(image1 : Image.Image, image2 : Image.Image) -> Image.Image:
     """
     Merge two images together. The first image is on the left, the second image is on the right.

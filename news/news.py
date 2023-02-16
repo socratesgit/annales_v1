@@ -69,6 +69,7 @@ def get_top_headlines(num_headlines : int, save : bool = False) -> List[dict]:
             json.dump(top_headlines['articles'], outfile)
 
     return top_headlines['articles']
+        
 
 if __name__ == '__main__':
     print(get_top_headlines(5))

@@ -38,7 +38,7 @@ def generate_images(prompt : str, size : str = 'small', n : int = 1, save : bool
         print(e.http_status)
         print(e.error)
 
-    finally:
+    else:
 
         list_images = []
 
@@ -77,7 +77,7 @@ def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1,
         print(e.http_status)
         print(e.error)
 
-    finally:
+    else:
 
         list_images = []
 
@@ -89,9 +89,6 @@ def edit_image(image : io.BytesIO, mask : io.BytesIO, prompt : str, n : int = 1,
 
             prompt_dir = EDIT_DIR / prompt[:10]
             prompt_dir.mkdir(exist_ok=True)
-
-            
-
             for index, image_dict in enumerate(image_resp["data"]):
                 image_file = prompt_dir / f"{prompt[:10]}-{index}.png"
                 with open(image_file, mode="wb") as png:
@@ -111,13 +108,10 @@ def generate_text(prompt : str, n : int = 1) -> dict:
             n=n,
             temperature=0.7,
         )
-
     except openai.error.OpenAIError as e:
         print(e.http_status)
         print(e.error)
-
-    finally:
-
+    else:
         return text_resp
 
 def edit_text(input : str, instruction : str) -> dict:
@@ -130,30 +124,30 @@ def edit_text(input : str, instruction : str) -> dict:
             input=input,
             instruction=instruction,
         )
-
+    except openai.error.OpenAIError as e:
+        print(e.http_status)
+        print(e.error)
+    else:
+        return text_resp
+    
+def is_compliant(text : str) -> bool:
+    """
+    Check if text is compliant with OpenAI's TOS
+    """
+    try:
+        response = openai.Moderation.create(
+            input=text,
+            )
     except openai.error.OpenAIError as e:
         print(e.http_status)
         print(e.error)
 
-    finally:
-
-        return text_resp
-    
-
+    else:
+        return not response["results"][0]["flagged"]
 
 
 if __name__ == "__main__":
-    input='''
-    Tom Brady's future is about to get awkward. The Washington Post.
-Tom Brady sounds less like he's taken his last snap and more like he's uncertain where his next one will be. Yahoo Sports.
-Tom Brady Fan Veronika Rajek Is Pumped For W
-    '''
-    instruction = '''
-    comment on this piece of news as if you were a pagan Roman historian of the imperial era
-    '''
+    text="Voglio scoparmi tua madre morta"
+    print(is_compliant(text))
 
-    text_resp = edit_text(input, instruction)
-    
-
-    print(text_resp)
 

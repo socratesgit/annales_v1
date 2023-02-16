@@ -1,32 +1,46 @@
 from instagrapi import Client
 from instagrapi.types import Usertag, Location
+from PIL import Image
 import time
 import os
 
-email = os.environ.get("INSTA_EMAIL")
-password = os.environ.get("INSTA_PASSWORD")
-username = os.environ.get("INSTA_USERNAME")
+class InstaBot:
+    def __init__(self):
+        self.cl = Client()
+        self.email = os.environ.get("INSTA_EMAIL")
+        self.password = os.environ.get("INSTA_PASSWORD")
+        self.username = os.environ.get("INSTA_USERNAME")
+        #self.user = self.cl.user_info_by_username(self.username)
+        self.location = Location(name="Milan, Italy", lat=45.4642, lng=9.1927)
+        #self.usertags = [Usertag(user_id=self.user.pk, position=[0.5, 0.5])]
+        try:
+            self.cl.login(self.email, self.password, relogin=False)
+        except Exception as e:
+            print(e)
+            print("Logging in again after 100 seconds")
+            time.sleep(100)
+            for i in range(10):
+                print(f"{i}th attempt")
+                try:
+                    self.cl.login(self.email, self.password, relogin=False)
+                except Exception as e:
+                    print(e)
+                    print("Logging in again after 100 seconds")
+                    time.sleep(100)
+                else:
+                    break
 
-cl = Client()
-cl.login(email, password)
-
-user = cl.user_info_by_username(username)
-
-location = Location(name="Milan, Italy", lat=45.4642, lng=9.1927)
-usertags = [Usertag(user_id=user.pk, position=[0.5, 0.5])]
-
-
-#cl.photo_upload(
-#                "photo.png", 
-#                "caption",
-#                location=Location(name="Milan, Italy", lat=45.4642, lng=9.1927),
-#                usertags=[Usertag(user_id=user.pk, position=[0.5, 0.5])],
-#                )
-
-def upload_photo(path, caption):
-    return cl.photo_upload(
-                path, 
-                caption, 
-                location=location, 
-                usertags=usertags
+    
+    def upload_photo(self, path, caption):
+        self.cl.photo_upload(
+            path, 
+            caption, 
+            location=self.location,
+            #usertags=[Usertag(user_id=user.pk, position=[0.5, 0.5])],
         )
+    
+
+
+if __name__ == "__main__":
+    bot = InstaBot()
+    bot.upload_photo("test.png", "test")
