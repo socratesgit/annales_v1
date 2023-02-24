@@ -10,6 +10,8 @@ from pathlib import Path
 NEWS_DIR = Path.cwd() / 'data' / 'articles'
 NEWS_DIR.mkdir(exist_ok=True)
 
+TESTED_SOURCES = ['cnn','the-washington-post','fox-news','nbc-news']
+
 newsapi = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY'))
 
 def get_source_random() -> str:
@@ -29,7 +31,7 @@ def get_articles(num_articles : int, save : bool = False) -> List[dict]:
     '''
     articles = newsapi.get_everything(
         #sources=get_source_random(),
-        sources='the-whashington-post',
+        sources='the-washington-post',
         sort_by='popularity',
         page_size=num_articles,
         )
@@ -51,9 +53,10 @@ def get_top_headlines(num_headlines : int, save : bool = False) -> List[dict]:
     '''
     Get n top headlines from the newsapi
     '''
+    source = random.choice(TESTED_SOURCES)
     top_headlines = newsapi.get_top_headlines(
         #sources=get_source_random(),
-        sources='the-whashington-post',
+        sources=source,
         language='en',
         page_size=num_headlines,
         )
@@ -72,7 +75,9 @@ def get_top_headlines(num_headlines : int, save : bool = False) -> List[dict]:
         
 
 if __name__ == '__main__':
-    print(get_top_headlines(5))
+    #print(get_source_random())
+    #print(get_articles(5, save=True))
+    print(get_top_headlines(5, save=True))
 
 
 #sources = newsapi.get_sources()

@@ -1,11 +1,24 @@
+from datetime import datetime
 from typing import List
 from PIL import Image
 from pathlib import Path
 import sys
 
-MERGE_DIR = Path.cwd() / 'data' / 'marged'
+MERGE_DIR = Path.cwd() / 'data' / 'merged'
 
 MERGE_DIR.mkdir(exist_ok=True)
+
+def merge_in_place(image1 : Image.Image, image2 : Image.Image) -> Image.Image:
+    """
+    Paste one image on top of another image in place.
+    """
+    width1, height1 = image1.size
+    width2, height2 = image2.size
+
+    image1.paste(image2, (0,0))
+
+    return image1
+
 
 def merge_right(image1 : Image.Image, image2 : Image.Image) -> Image.Image:
     """
@@ -64,7 +77,8 @@ def merge_top_list(image_list : List[Image.Image]) -> Image.Image:
 
 OPTIONS = {
     'right': merge_right,
-    'bottom': merge_bottom
+    'bottom': merge_bottom,
+    'in-place': merge_in_place,
 }
 
 def main(image1_path : str, image2_path : str, merge_type : str = 'right') -> None:
@@ -76,7 +90,7 @@ def main(image1_path : str, image2_path : str, merge_type : str = 'right') -> No
 
     new_image = OPTIONS[merge_type](image1, image2)
 
-    new_image.save(MERGE_DIR / f"{image1_path.stem}-{image2_path.stem}.png")
+    new_image.save(MERGE_DIR/f"merged_{datetime.now()}.png")
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:

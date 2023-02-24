@@ -39,6 +39,8 @@ class InstaBot:
             #usertags=[Usertag(user_id=user.pk, position=[0.5, 0.5])],
         )
     
+    def print_info(self):
+        print(self.cl.user_info_by_username(self.username))
 
 
 if __name__ == "__main__":

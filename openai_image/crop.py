@@ -9,26 +9,46 @@ CROP_DIR = Path.cwd() / 'data' / 'cropped'
 CROP_DIR.mkdir(exist_ok=True)
 
 def calculate_x_y_w_h(width : float, height : float, option : str) -> Tuple[float, float, float, float]:
-    if option == "top_half":
+    if option == "top-half":
         x=0
         y=-height/2
         w=width
         h=height/2
-    elif option == "bottom_half":
+    elif option == "bottom-half":
         x=0
         y=height/2
         w=width
         h=height+(height/2)
-    elif option == "left_half":
+    elif option == "left-half":
         x=-width/2
         y=0
         w=width/2
         h=height
-    elif option == "right_half":
+    elif option == "right-half":
         x=width/2
         y=0
         w=width+(width/2)
         h=height
+    elif option == "top-right-corner":
+        x=width/2
+        y=-height/2
+        w=width+(width/2)
+        h=height/2
+    elif option == "top-left-corner":
+        x=-width/2
+        y=-height/2
+        w=width/2
+        h=height/2
+    elif option == "bottom-right-corner":
+        x=width/2
+        y=height/2
+        w=width+(width/2)
+        h=height+(height/2)
+    elif option == "bottom-left-corner":
+        x=-width/2
+        y=height/2
+        w=width/2
+        h=height+(height/2)
     else:
         raise ValueError("Option not supported")
     
@@ -36,7 +56,7 @@ def calculate_x_y_w_h(width : float, height : float, option : str) -> Tuple[floa
 
 def crop_image(image : Image.Image, option : str) -> Image.Image:
     """
-    Crop the image. Option can be top_half, bottom_half, left_half, right_half.
+    Crop the image. Option can be top-half, bottom-half, left-half, right-half.
     """
     width, height = image.size
 

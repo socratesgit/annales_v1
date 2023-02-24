@@ -7,25 +7,45 @@ MASK_DIR = Path.cwd() / 'data' / 'masked'
 MASK_DIR.mkdir(exist_ok=True)
 
 def calculate_x_y_width_height(width : float, height : float, option : str) -> Tuple[float, float, float, float]:
-    if option == "top_half":
+    if option == "top-half":
         x=0
         y=0
         width=width
         height=height/2
-    elif option == "bottom_half":
+    elif option == "bottom-half":
         x=0
         y=height/2
         width=width
         height=height
-    elif option == "left_half":
+    elif option == "left-half":
         x=0
         y=0
         width=width/2
         height=height
-    elif option == "right_half":
+    elif option == "right-half":
         x=width/2
         y=0
         width=width
+        height=height
+    elif option == "top-right-corner":
+        x=width/2
+        y=0
+        width=width
+        height=height/2
+    elif option == "top-left-corner":
+        x=0
+        y=0
+        width=width/2
+        height=height/2
+    elif option == "bottom-right-corner":
+        x=width/2
+        y=height/2
+        width=width
+        height=height
+    elif option == "bottom-left-corner":
+        x=0
+        y=height/2
+        width=width/2
         height=height
     else:
         raise ValueError("Option not supported")
@@ -53,8 +73,7 @@ def main(image_path : Path, option : str) -> None:
     """
     image = Image.open(image_path)
     mask = mask_image(image, option)
-    image.putalpha(mask)
-    image.save(MASK_DIR / image_path.name)
+    mask.save(MASK_DIR / image_path.name)
 
 if __name__ == "__main__":
     if(len(sys.argv) != 3):

@@ -1,3 +1,4 @@
+import os
 import random
 import time
 from PIL import Image
@@ -57,17 +58,6 @@ def create_caption(article : dict) -> str:
     #text = openai_api.generate_text(decorated_prompt, 1)
     #return text['choices'][0]['text']
 
-def generator_next_compliant_headline():
-    '''
-    Generator that yields the next headline that is compliant with OpenAI's policies.
-    '''
-    top_headlines = news.get_top_headlines(20)
-    for headline in top_headlines:
-        yield headline['title']
-        #is_compliant = openai_api.is_compliant(headline['title'])
-        #if is_compliant:
-        #    yield headline
-
 def current_index_and_image(dir : Path):
     '''
     Get the current index and image path for a given directory.
@@ -76,7 +66,7 @@ def current_index_and_image(dir : Path):
     current_image_path = None
     for file in dir.iterdir():
         #if file is png 
-        if file.suffix == ".png":
+        if file.suffix == ".jpg":
             #split file name on _ and get first element
             index = int(file.name.split("_")[0])
             if index > current_index or current_index == 0:
@@ -84,27 +74,22 @@ def current_index_and_image(dir : Path):
                 current_image_path = file
     return current_index, current_image_path
 
-def generate_next_feed_line():
-    #prompt = decorate_prompt(random.choice(PROMPTS))
-    prompts = news.get_top_headlines(20)
-    current_index, _ = current_index_and_image(CENTER_DIR)
-    try:
+def generate_next_feed_line(prompt : str, size : str):
+    '''
+    Generate the next feed line. Horizontal coherence only!
+    '''
 
-        prompt = create_caption(prompts.pop())
-        while not openai_api.is_compliant(prompt):
-            if prompts:
-                prompt = create_caption(prompts.pop())
-            else:
-                prompts = news.get_top_headlines(20)
+    current_index, _ = current_index_and_image(CENTER_DIR)
+    prompt_hash = hash(prompt)
+    try:
 
         print(f"Generating center image for {prompt}")
         center_image = openai_api.generate_images(
                                                 prompt=prompt,
-                                                #prompt=next(prompt),
-                                                size='small',
+                                                size=size,
                                                 n=1
                                                 ).pop()
-        center_image.save(CENTER_DIR / f"{current_index + 1}_{prompt}.png")
+        center_image.save(CENTER_DIR / f"{current_index + 1}_{prompt_hash}.jpg")
         print("Generated center image")
     except Exception as e:
         print(e)
@@ -114,19 +99,28 @@ def generate_next_feed_line():
             print("Generating left and right images")
             left_image = outpaint.make_tile(center_image, 
                                                 prompt=prompt, 
-                                                direction="right")
-            left_image.save(LEFT_DIR / f"{current_index + 1}_{prompt}.png")
+                                                direction="right",
+                                                size=size)
+            left_image.save(LEFT_DIR / f"{current_index + 1}_{prompt_hash}.jpg")
             right_image = outpaint.make_tile(center_image, 
                                              prompt=prompt, 
-                                             direction="left")
-            right_image.save(RIGHT_DIR / f"{current_index + 1}_{prompt}.png")
+                                             direction="left",
+                                             size=size)
+            right_image.save(RIGHT_DIR / f"{current_index + 1}_{prompt_hash}.jpg")
             print("Generated left and right images")
         except Exception as e:
             print(e)
-            return
+            for dir in DIR_LIST:
+                for file in dir.iterdir():
+                    if file.name.split("_")[0] == str(current_index + 1):
+                        file.unlink()
 
-def generate_next_feed_top():
 
+def generate_next_feed_top(prompt : str, size : str):
+    '''
+    Generate the next feed line. Vertical coherence only!
+    '''
+    prompt_hash = hash(prompt)
     dir_list_reverse = DIR_LIST[::-1]
     for dir in dir_list_reverse:
         
@@ -135,20 +129,60 @@ def generate_next_feed_top():
         if current_image_path:
             print(f"Making tile for {current_image_path.name}")
             try:
-                prompt = random.choice(PROMPTS)
                 current_image = Image.open(current_image_path)
-                next_image = outpaint.make_tile(current_image, prompt, "top")
-                next_image.save(dir / f"{current_index + 1}_{prompt}.png")
+                next_image = outpaint.make_tile(current_image, prompt, "top", size)
+                next_image.save(dir / f"{current_index + 1}_{prompt_hash}.jpg")
             except Exception as e:
                 print(e)
+                for file in dir.iterdir():
+                    if file.name.split("_")[0] == str(current_index + 1):
+                        file.unlink()
         else:
             print("No current feed image found")
-        
-            
-def upload_feed():
 
+
+def generate_next_feed_tasselate(prompt : str, size : str):
+    '''
+    Generate the next feed line. Vertical and horizontal coherence.
+    '''
+    prompt_hash = hash(prompt)
+    center_current_index, center_image_name = current_index_and_image(CENTER_DIR)
+    left_current_index, left_image_name = current_index_and_image(LEFT_DIR)
+    right_current_index, right_image_name = current_index_and_image(RIGHT_DIR)
+
+    if center_image_name and left_image_name and right_image_name:
+        print(f"Making tasselate for {center_image_name.name}")
+        print(f"with prompt: {prompt}")
+        try:
+            center_image = Image.open(center_image_name)
+            #something has to be fixed...
+            left_image = Image.open(right_image_name)
+            right_image = Image.open(left_image_name)
+            
+            next_center_image = outpaint.make_tile(center_image, prompt, "top", size)
+            next_left_image = outpaint.tasselate_left(left_image, center_image, next_center_image, prompt, size)
+            next_right_image = outpaint.tasselate_right(right_image, center_image, next_center_image, prompt, size)
+
+            next_center_image.save(CENTER_DIR / f"{center_current_index + 1}_{prompt_hash}.jpg")
+            next_left_image.save(RIGHT_DIR / f"{left_current_index + 1}_{prompt_hash}.jpg")
+            next_right_image.save(LEFT_DIR / f"{right_current_index + 1}_{prompt_hash}.jpg")
+
+        except Exception as e:
+            print(e)
+            for dir in DIR_LIST:
+                for file in dir.iterdir():
+                    if file.name.split("_")[0] == str(center_current_index + 1):
+                        file.unlink()
+
+
+def upload_feed(caption : str):
+    '''
+    Upload the feed to instagram.
+    '''
     insta_bot = bot.InstaBot()
+
     dir_list_reverse = DIR_LIST[::-1]
+
     for dir in dir_list_reverse:
 
         _, current_image = current_index_and_image(dir)
@@ -158,7 +192,7 @@ def upload_feed():
             print("uploading " + dir.name + " - " + current_image.name)
             try:
                 insta_bot.upload_photo(path=current_image, 
-                                        caption=current_image.name.split("_")[1]
+                                        caption=caption
                                         )
                 print("uploaded  " + dir.name + " - " + current_image.name)
                 time.sleep((random.random() + 1) * 10)
@@ -166,7 +200,78 @@ def upload_feed():
                 print(e)
                 pass
 
+def test():
+    articles = news.get_top_headlines(10)
+    if not articles:
+        print("No articles found")
+        exit(1)
+    prompt_selected = None
+    article_selected = None
+    while True:
+        article = articles.pop()
+        if openai_api.is_compliant(article["title"] + " - " + article["description"]):
+            prompt_selected = article["title"] + " - " + article["description"]
+            article_selected = article
+            break
+    if not prompt_selected:
+        print("No compliant articles found")
+        exit(1)
 
-if __name__ == "__main__":
-    generate_next_feed_line()
-    #upload_feed()
+    generate_next_feed_line(
+        prompt=decorate_prompt(prompt_selected),
+        size="large"
+    )
+    upload_feed(
+        caption= create_caption(article_selected)
+    )
+    
+    while True:
+        article = articles.pop()
+        if openai_api.is_compliant(article["title"] + " - " + article["description"]):
+            prompt_selected = article["title"] + " - " + article["description"]
+            article_selected = article
+            break
+    if not prompt_selected:
+        print("No compliant articles found")
+        exit(1)
+
+    generate_next_feed_tasselate(
+        prompt=decorate_prompt(prompt_selected),
+        size="large"
+    )
+    upload_feed(
+        caption= create_caption(article_selected)
+    )
+
+if __name__ == "__main__": 
+    
+    articles = news.get_top_headlines(10)
+
+    if not articles:
+        print("No articles found")
+        exit(1)
+
+    prompt_selected = None
+    article_selected = None
+
+    while True:
+        article = articles.pop()
+        if openai_api.is_compliant(article["description"]):
+            prompt_selected = article["description"]
+            article_selected = article
+            break
+
+    if not prompt_selected:
+        print("No compliant articles found")
+        exit(1)
+
+    generate_next_feed_line(
+        prompt=decorate_prompt(prompt_selected),
+        size="large"
+    )
+    upload_feed(
+        caption=create_caption(article_selected)
+    )
+
+    
+    
