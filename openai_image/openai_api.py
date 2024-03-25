@@ -147,7 +147,7 @@ def is_compliant(text : str) -> bool:
 
 
 if __name__ == "__main__":
-    text="Voglio scoparmi tua madre morta"
+    text="ciao bello"
     print(is_compliant(text))
 
 
